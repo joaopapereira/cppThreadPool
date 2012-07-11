@@ -2,9 +2,9 @@
  *  Copyright 2012 Joao Pereira<joaopapereira@gmail.com>
  *
  *
- *  This file is part of libJPSemaphores.
+ *  This file is part of libJPThreadPool.
  *
- *  libJPSemaphores is free software: you can redistribute it and/or modify
+ *  libJPThreadPool is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
@@ -17,159 +17,156 @@
  *  You should have received a copy of the GNU General Public License
  *  along with libJPSemaphores.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef libJPSemaphores_H
-#define libJPSemaphores_H
-#include <semaphore.h>
-#include <sys/stat.h>
-#include <fcntl.h>
+#ifndef libJPThreadPool_H
+#define libJPThreadPool_H
+#include "JPThread.hpp"
+#include "libJPSemaphores.hpp"
 
-/**
- * Class used to implement a unique counter
- * for the identifier of the semaphores
- */
-class JPSemaphoreId{
-public:
-	/**
-	 * Function used to retrieve the next generated identifier
-	 * @return Integer with the next identifier
-	 */
-	static int getnextId();
+#ifndef MAX_POOL_SIZE
+#define MAX_POOL_SIZE 20
+#endif
+
+class JPPoolSharedMem{
 private:
-	/**
-	 * Actual value of the identifier
-	 */
-	static int semIdentifier;
-};
-
-
-/**
- * Function that implements a Semaphore
- */
-class JPSemaphore{
+    JPBinSemaphore sem;
+    
+    /**
+     * SharedMemory Part
+     * Begin{
+     */
+    std::map<std::string,std::string> memory;
+    /**
+     * End}
+     */
 protected:
-	/**
-	 * Maximum value alowed of the semaphore
-	 */
-	int	maxValue;
-	/**
-	 * Actual value of the semaphore
-	 */
-	int	actualValue;
-	/**
-	 * Semaphore ID
-	 */
-	short unsigned int	semId;
-
-	sem_t	*sem;
-
-	/**
-	 * Function used in the initialization of the semaphore
-	 * @return Integer < 0 in case of Error and 0 in case of success
-	 */
-	int	initSem();
-
+    std::string getFromMemory( std::string valName );
+    int setToMemory( std::string valName , std::string value );
 public:
-	/**
-	 * Function used to create the semaphore
-	 * @param pShared argument indicates whether this semaphore is to be shared
-	 * between the threads of a process, or between processes( if 0 is shared between
-	 * threads, if nonzero is shared is shared between process)
-	 * @param sValue Starting value of the semaphore
-	 */
-	JPSemaphore( int pShared , int sValue );
-
-	/**
-	 * Function used to create the semaphore<br>
-	 * The function creates a semaphore to use in threads and starting value equal
-	 * to 1
-	 */
-	JPSemaphore( );
-
-	/**
-	 * Function used to destruct the semaphore.<br>
-	 * This function call the system call to delete the semaphore from the system
-	 */
-	~JPSemaphore();
-
-	/**
-	 * Function increments the value of the semaphore.<br>
-	 * When this function is called all the threads/process holding in this semaphore
-	 * are woke.
-	 * @return Return -1 on Error and 0 on Success
-	 */
-	int up();
-
-	/**
-	 * Function decrements the value of the semaphore.<br>
-	 * If the semaphore is zero puts the thread/process on hold.<br>
-	 * If the semaphore is nonzero decrements the semaphore value
-	 * @return Return -1 on Error and 0 on Success
-	 */
-	int down();
-
-protected:
-	/**
-	 * Function increments the value of the semaphore.<br>
-	 * When this function is called all the threads/process holding in this semaphore
-	 * are woke.
-	 * @return Return -1 on Error and 0 on Success
-	 */
-	int int_up();
-	/**
-	 * Function decrements the value of the semaphore.<br>
-	 * If the semaphore is zero puts the thread/process on hold.<br>
-	 * If the semaphore is nonzero decrements the semaphore value
-	 * @return Return -1 on Error and 0 on Success
-	 */
-	int int_down();
-
-	/**
-	 * Function that creates the semaphore
-	 */
-	void int_createSem();
+    bool die();
+    /**
+     * This function will set the amount of
+     * threads that need to die
+     */
+    int kill( int num );
 };
 
 /**
- * Specialization of the semaphore.
- * This class implements a binary semaphore
+ * This class will implement a worker
+ * instead of the control over the thread rely on the
+ * thread function the control will rely in this class
+ * that will wait for instructions from the Pool end
+ * This class will also allow the the function to be executed 
+ * to change during the process
  */
-class JPBinSemaphore: public JPSemaphore{
-protected:
-	/**
-	 * Initializes the semaphore
-	 */
-	int	initSem();
+class JPThrWorker: public JPThread{
+    protected:
+        static void * runner( void * thrArgs );
+        /**
+         * 
+         */
+        JPSemaphore * poolSem;
+        JPPoolSharedMem * shrMem;
+    public:
+        JPThrWorker( JPPoolSharedMem * shrMem );
+        
+        /**
+         * 
+         */
+        int setFunction(thread_start_t funct);
+        /**
+         * 
+         */
+        int setArguments(var_t thread_args);
+        /**
+         * This will launch the runner function
+         * on the thread that will execute
+         */
+        int run();
+};
 
-public:
-	/**
-	 * Function used to create the semaphore
-	 * @param pShared argument indicates whether this semaphore is to be shared
-	 * between the threads of a process, or between processes( if 0 is shared between
-	 * threads, if nonzero is shared is shared between process)
-	 * @param sValue Starting value of the semaphore
-	 */
-	JPBinSemaphore( int pShared , int sValue );
 
-	/**
-	 * Function used to create the semaphore<br>
-	 * The function creates a semaphore to use in threads and starting value equal
-	 * to 1
-	 */
-	JPBinSemaphore( );
+typedef std::map<std::string,JPThread*> thrpool_thr_t;
+/**
+ * Class that implements a pool of threads
+ */
+class JPThreadPool{
 
-	/**
-	 * Function used to destruct the semaphore.<br>
-	 * This function call the system call to delete the semaphore from the system
-	 */
-	~JPBinSemaphore();
+	private:
+                /**
+                 * Variable that contains the pool of threads
+                 */
+		thrpool_thr_t pool;
+                /**
+                 * Maximum size of the pool
+                 */
+		int	maxPoolSize;
+                /**
+                 * Variable that says if a routine as been
+                 * setted
+                 */
+		int	hasRoutine;
+                /**
+                 * Function to run on the pool
+                 */
+		thread_start_t routine;
+                /**
+                 * Arguments for the function
+                 */
+		var_t routineArgs;
+                /**
+                 * Semaphore used to syncronize the threads 
+                 */
+		JPSemaphore *sem;
+                /**
+                 * Variable to be used on the logger
+                 */
+		static const std::string moduleName;
 
-	/**
-	 * Function increments the value of the semaphore.<br>
-	 * When this function is called all the threads/process holding in this semaphore
-	 * are woke. If actual value = 1 does nothing
-	 * @return Return -1 on Error and 0 on Success
-	 */
-	int up();
+                /**
+                 * Function to launch one thread
+                 * @param str Name of the thread
+                 * @return 0 In case of success
+                 *         1 In case of error
+                 */
+		int launchThread( std::string str );
+
+	public:
+            /**
+             * Class constructor
+             * @param poolSize Size of the pool
+             * @param outSem Semaphore to sync the threads
+             */
+		MThreadPool( int poolSize = MAX_POOL_SIZE, MSemaphore * outSem = NULL);
+
+                /**
+                 * Function to set the routine to be called and the parameters
+                 * @param start_routine Function for the threads to run
+                 * @param arg Pointer to the arguments
+                 * @return 0 In case of success
+                 *         1 In case of error
+                 */
+                int setRoutine( void *(*start_routine) (void*),
+				void *arg);
+                /**
+                 * Function used to create the pool
+                 * @return 0 In case of success
+                 *         1 In case of error
+                 */
+		int createPool();
+                /**
+                 * Change the number of threads to be launched
+                 * @param num Number of threads to be launched
+                 * @return 0 In case of success
+                 *         1 In case of error
+                 */
+		int setThreadNum( int num );
+
+                /**
+                 * This function will wait until all threads are dead
+                 * @return 0 In case of success
+                 *         1 In case of error
+                 */
+		int joinPool();
 
 };
 
