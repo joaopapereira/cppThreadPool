@@ -3,14 +3,45 @@
 #
 #
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
-SET(LIBRARY_OUTPUT_PATH ${CMAKE_HOME_DIRECTORY}/lib)
-SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_HOME_DIRECTORY}/bin)
+IF( DEFINED ENV{INSTALL_LIB_DIR} )
+   SET(INSTALL_LIBS $ENV{INSTALL_LIB_DIR}/ )
+ELSE()
+   SET(INSTALL_LIBS ${CMAKE_HOME_DIRECTORY}/lib )
+ENDIF()
+IF( DEFINED ENV{INSTALL_INC_DIR} )
+   SET(INSTALL_INCS $ENV{INSTALL_INC_DIR}/ )
+ELSE()
+   SET(INSTALL_INCS ${CMAKE_HOME_DIRECTORY}/include )
+ENDIF()
+
+
+SET(LIBRARY_OUTPUT_PATH .)
+SET(EXECUTABLE_OUTPUT_PATH .)
 
 PROJECT ( thrpool CXX )
+INCLUDE_DIRECTORIES( include lib ${INSTALL_LIBS} ${INSTALL_INCS})
 
-ADD_SUBDIRECTORY( src )
+ADD_SUBDIRECTORY( src lib )
+#####################################
+# Search for needed lib
+#####################################
+FIND_LIBRARY(logger REQUIRED)
+FIND_LIBRARY(JPSemaphore REQUIRED)
+FIND_LIBRARY( CPPJPLOGGER_LIB NAMES logger
+                PATHS ${LOCAL_LIBS} ${INSTALL_LIBS} )
+
 find_library(logger REQUIRED)
-include_directories(${logger_INCLUDE_DIRS} include lib ${LOCAL_INC}/include/ ${LOCAL_LIB}/lib/ )
+include_directories(${logger_INCLUDE_DIRS})
+
+#####################################
+# Instalation section
+#####################################
+INSTALL( FILES include/libJPSemaphores.hpp
+         DESTINATION ${INSTALL_INCS} )
+
+INSTALL( FILES lib/libJPSemaphores.so
+         DESTINATION ${INSTALL_LIBS} )
+
 
 
 IF( UNIX )
@@ -20,7 +51,7 @@ IF( UNIX )
    cmake.check_depends
    CMakeCache.txt
    cmake.check_cache
-   *.cmake
+   cmake*.cmake
    Makefile
    core core.*
    gmon.out

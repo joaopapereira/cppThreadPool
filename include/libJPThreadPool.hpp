@@ -20,7 +20,7 @@
 #ifndef libJPThreadPool_H
 #define libJPThreadPool_H
 #include "JPThread.hpp"
-#include "libJPSemaphores.hpp"
+#include <extlibs/libJPSemaphores.hpp>
 
 #ifndef MAX_POOL_SIZE
 #define MAX_POOL_SIZE 20
@@ -59,29 +59,29 @@ public:
  * to change during the process
  */
 class JPThrWorker: public JPThread{
-    protected:
-        static void * runner( void * thrArgs );
-        /**
-         * 
-         */
-        JPSemaphore * poolSem;
-        JPPoolSharedMem * shrMem;
-    public:
-        JPThrWorker( JPPoolSharedMem * shrMem );
-        
-        /**
-         * 
-         */
-        int setFunction(thread_start_t funct);
-        /**
-         * 
-         */
-        int setArguments(var_t thread_args);
-        /**
-         * This will launch the runner function
-         * on the thread that will execute
-         */
-        int run();
+	protected:
+		static void * runner( void * thrArgs );
+		/**
+		 *
+		 */
+		JPSemaphore * poolSem;
+		JPPoolSharedMem * shrMem;
+	public:
+		JPThrWorker( JPPoolSharedMem * shrMem );
+
+		/**
+		 *
+		 */
+		int setFunction(thread_start_t funct);
+		/**
+		 *
+		 */
+		int setArguments(var_t thread_args);
+		/**
+		 * This will launch the runner function
+		 * on the thread that will execute
+		 */
+		int run();
 };
 
 
@@ -92,80 +92,80 @@ typedef std::map<std::string,JPThread*> thrpool_thr_t;
 class JPThreadPool{
 
 	private:
-                /**
-                 * Variable that contains the pool of threads
-                 */
+		/**
+		 * Variable that contains the pool of threads
+		 */
 		thrpool_thr_t pool;
-                /**
-                 * Maximum size of the pool
-                 */
+		/**
+		 * Maximum size of the pool
+		 */
 		int	maxPoolSize;
-                /**
-                 * Variable that says if a routine as been
-                 * setted
-                 */
+		/**
+		 * Variable that says if a routine as been
+		 * setted
+		 */
 		int	hasRoutine;
-                /**
-                 * Function to run on the pool
-                 */
+		/**
+		 * Function to run on the pool
+		 */
 		thread_start_t routine;
-                /**
-                 * Arguments for the function
-                 */
+		/**
+		 * Arguments for the function
+		 */
 		var_t routineArgs;
-                /**
-                 * Semaphore used to syncronize the threads 
-                 */
+		/**
+		 * Semaphore used to syncronize the threads
+		 */
 		JPSemaphore *sem;
-                /**
-                 * Variable to be used on the logger
-                 */
+		/**
+		 * Variable to be used on the logger
+		 */
 		static const std::string moduleName;
 
-                /**
-                 * Function to launch one thread
-                 * @param str Name of the thread
-                 * @return 0 In case of success
-                 *         1 In case of error
-                 */
+		/**
+		 * Function to launch one thread
+		 * @param str Name of the thread
+		 * @return 0 In case of success
+		 *         1 In case of error
+		 */
 		int launchThread( std::string str );
 
 	public:
-            /**
-             * Class constructor
-             * @param poolSize Size of the pool
-             * @param outSem Semaphore to sync the threads
-             */
+		/**
+		 * Class constructor
+		 * @param poolSize Size of the pool
+		 * @param outSem Semaphore to sync the threads
+		 */
 		MThreadPool( int poolSize = MAX_POOL_SIZE, MSemaphore * outSem = NULL);
 
-                /**
-                 * Function to set the routine to be called and the parameters
-                 * @param start_routine Function for the threads to run
-                 * @param arg Pointer to the arguments
-                 * @return 0 In case of success
-                 *         1 In case of error
-                 */
-                int setRoutine( void *(*start_routine) (void*),
-				void *arg);
-                /**
-                 * Function used to create the pool
-                 * @return 0 In case of success
-                 *         1 In case of error
-                 */
+		/**
+		 * Function to set the routine to be called and the parameters
+		 * @param start_routine Function for the threads to run
+		 * @param arg Pointer to the arguments
+		 * @return 0 In case of success
+		 *         1 In case of error
+		 */
+		int setRoutine( void *(*start_routine) (void*),
+		void *arg);
+		/**
+		 * Function used to create the pool
+		 * @return 0 In case of success
+		 *         1 In case of error
+		 */
 		int createPool();
-                /**
-                 * Change the number of threads to be launched
-                 * @param num Number of threads to be launched
-                 * @return 0 In case of success
-                 *         1 In case of error
-                 */
+		/**
+		 * Change the number of threads to be launched
+		 * @param num Number of threads to be launched
+		 * @return 0 In case of success
+		 *         1 In case of error
+		 */
 		int setThreadNum( int num );
 
-                /**
-                 * This function will wait until all threads are dead
-                 * @return 0 In case of success
-                 *         1 In case of error
-                 */
+		/**
+		 * This function will wait until all threads are dead
+		 * @return 0 In case of success
+		 *         1 In case of error
+		 */
 		int joinPool();
 
 };
