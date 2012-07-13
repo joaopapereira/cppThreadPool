@@ -1,5 +1,5 @@
 # find logger
-
+message("STUFF")
 IF(NOT(logger_LIBRARY AND logger_INCLUDE_DIR))
 	# search for include and library path
 	FIND_PATH(logger_INCLUDE_DIR  libJPLogger.h PATHS ${LOCAL_INC} )

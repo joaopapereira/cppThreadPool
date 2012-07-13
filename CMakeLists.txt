@@ -22,24 +22,30 @@ PROJECT ( thrpool CXX )
 INCLUDE_DIRECTORIES( include lib ${INSTALL_LIBS} ${INSTALL_INCS})
 
 ADD_SUBDIRECTORY( src lib )
+ADD_SUBDIRECTORY( exampleProgram bin )
 #####################################
 # Search for needed lib
 #####################################
 FIND_LIBRARY(logger REQUIRED)
-FIND_LIBRARY(JPSemaphore REQUIRED)
-FIND_LIBRARY( CPPJPLOGGER_LIB NAMES logger
+FIND_LIBRARY(JPSemaphores REQUIRED)
+FIND_LIBRARY( LOGGER_LIBRARY NAMES logger
                 PATHS ${LOCAL_LIBS} ${INSTALL_LIBS} )
+SET( LIBS ${LIBS} ${LOGGER_LIBRARY})
+FIND_LIBRARY( JPSEMAPHORES_LIBRARY NAMES JPSemaphores
+                PATHS ${LOCAL_LIBS} ${INSTALL_LIBS} )
+SET( LIBS ${LIBS} ${JPSEMAPHORES_LIBRARY})
+message(${LIBS})
+message(${INSTALL_LIBS})
 
-find_library(logger REQUIRED)
-include_directories(${logger_INCLUDE_DIRS})
+#include_directories(${logger_INCLUDE_DIRS} ${JPSemaphore_INCLUDE_DIRS})
 
 #####################################
 # Instalation section
 #####################################
-INSTALL( FILES include/libJPSemaphores.hpp
+INSTALL( FILES include/libJPThreadPool.hpp
          DESTINATION ${INSTALL_INCS} )
 
-INSTALL( FILES lib/libJPSemaphores.so
+INSTALL( FILES lib/libJPThreadPool.so
          DESTINATION ${INSTALL_LIBS} )
 
 

@@ -21,8 +21,19 @@
 #ifndef JPTHREAD_HPP
 #define	JPTHREAD_HPP
 #include <pthread.h>
+#include <string>
+#include <extlibs/libJPLogger.h>
+
 
 typedef void* var_t;
+typedef struct{
+	var_t funVariables;
+	Logger * logger;
+	std::string * thrName;
+}__thr_var_t;
+
+typedef __thr_var_t * thr_var_t;
+
 typedef var_t (*thread_start_t)(var_t);
 /**
  * This class implements a single thread
@@ -41,11 +52,23 @@ class JPThread
          * Function that starts the thread
          * @param thread_args Arguments to send to function
          */
-        void run(var_t thread_args);
+        void run(thr_var_t thread_args);
+        /**
+		 * Function that starts the thread
+		 * @param thread_start_t Function to be called
+		 * @param thread_args Arguments to send to function
+		 */
+		void run(thread_start_t thread_start, thr_var_t thread_args);
         /**
          * Wait for thread to die
          */
         void join();
+
+        /**
+         * Set the name of the
+         * @param name Name of the thread
+         */
+        void setThreadName(std::string name);
 
     private:
         /**
@@ -56,7 +79,14 @@ class JPThread
          * Thread id
          */
         pthread_t _thread;
-
+        /**
+         * Name of the thread
+         */
+        std::string _thread_name;
+        /**
+         * arguments to be passed to the thread
+         */
+        thr_var_t _thread_args;
 
 };
 

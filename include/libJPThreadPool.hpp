@@ -21,13 +21,21 @@
 #define libJPThreadPool_H
 #include "JPThread.hpp"
 #include <extlibs/libJPSemaphores.hpp>
+#include <extlibs/libJPLogger.h>
+#include <string>
 
 #ifndef MAX_POOL_SIZE
 #define MAX_POOL_SIZE 20
 #endif
 
+/**
+ * Shared memory class used to set share variables between threads
+ */
 class JPPoolSharedMem{
 private:
+	/**
+	 * Semaphore to access the memory
+	 */
     JPBinSemaphore sem;
     
     /**
@@ -39,13 +47,37 @@ private:
      * End}
      */
 protected:
+    /**
+     * This function should NOT be overloaded
+     * This function get a string from the shared memory
+     * @param valName Key of what we want to get
+     * @return String with the correspondent value or '\n'
+     */
     std::string getFromMemory( std::string valName );
+    /**
+     * This function should NOT be overloaded
+     * Function changes a value of a key
+     * @param valName Key to get value from
+     * @param value Value of the key
+     * @return 0 in case of success
+     */
     int setToMemory( std::string valName , std::string value );
 public:
+    /**
+     * Class constructor that initialize the semaphore
+     * and the memory
+     */
+    JPPoolSharedMem();
+    /**
+     * Function check if the thread need to die
+     * @return True if thread need to die
+     */
     bool die();
     /**
      * This function will set the amount of
      * threads that need to die
+     * @param num Number of threads to kill
+     * @return 0 in case of success
      */
     int kill( int num );
 };
@@ -62,30 +94,74 @@ class JPThrWorker: public JPThread{
 	protected:
 		static void * runner( void * thrArgs );
 		/**
-		 *
+		 * Semaphore from the pool
 		 */
-		JPSemaphore * poolSem;
-		JPPoolSharedMem * shrMem;
+		static JPSemaphore * poolSem;
+		/**
+		 * Shared memory
+		 */
+		static JPPoolSharedMem * shrMem;
+		/**
+		 * Function to call
+		 */
+		thread_start_t funct;
+		/**
+		 * Arguments to the function
+		 */
+		thr_var_t thread_args;
+		/**
+		 * Should wait for the function
+		 */
+		bool waitOnFunction;
+		/**
+		 * Should wait for the arguments
+		 */
+		bool waitOnArguments;
+		/**
+		 * Changes happened
+		 */
+		bool somethingChanged;
+		/**
+		 * Logger
+		 */
+		Logger * logger;
+
 	public:
-		JPThrWorker( JPPoolSharedMem * shrMem );
+		/**
+		 * Class constructor
+		 */
+		JPThrWorker( Logger * log, JPPoolSharedMem * shrMem, JPSemaphore * poolSem );
 
 		/**
-		 *
+		 * Function used to change the function
+		 * that will be called in the next iteration of the
+		 * worker
+		 * @param funct Function pointer
+		 * @param waitOnArgs Indicates if the arguments will be changed after
+		 * @return Integer 0 on success
 		 */
-		int setFunction(thread_start_t funct);
+		int setFunction(thread_start_t funct, bool waitOnArgs = false);
 		/**
-		 *
+		 * Function used to change the arguments
+		 * that will be used in next iteration of the worker
+		 * @param thread_args Arguments
+		 * @param waitOnFunction Indicates if function will be changed after
+		 * @return Integer 0 on success
 		 */
-		int setArguments(var_t thread_args);
+		int setArguments(thr_var_t thread_args, bool waitOnFunction = false);
 		/**
 		 * This will launch the runner function
 		 * on the thread that will execute
 		 */
-		int run();
+		int start();
+		/**
+		 * Function called by the thread
+		 */
+		static var_t doWork( var_t args );
 };
 
 
-typedef std::map<std::string,JPThread*> thrpool_thr_t;
+typedef std::map<std::string,JPThrWorker*> thrpool_thr_t;
 /**
  * Class that implements a pool of threads
  */
@@ -112,11 +188,15 @@ class JPThreadPool{
 		/**
 		 * Arguments for the function
 		 */
-		var_t routineArgs;
+		thr_var_t routineArgs;
 		/**
 		 * Semaphore used to syncronize the threads
 		 */
 		JPSemaphore *sem;
+		/**
+		 * Shared memory
+		 */
+		JPPoolSharedMem *shMem;
 		/**
 		 * Variable to be used on the logger
 		 */
@@ -129,14 +209,32 @@ class JPThreadPool{
 		 *         1 In case of error
 		 */
 		int launchThread( std::string str );
-
+		/**
+		 * Logger
+		 */
+		Logger * logger;
+		/**
+		 * Pool was started
+		 */
+		bool isPoolStarted;
+    protected:
+		/**
+		 * Shared Memory
+		 * This is in protected to allow classes
+		 * to add different types of shrmem
+		 */
+		JPPoolSharedMem * shrMem;
 	public:
 		/**
 		 * Class constructor
 		 * @param poolSize Size of the pool
 		 * @param outSem Semaphore to sync the threads
 		 */
-		MThreadPool( int poolSize = MAX_POOL_SIZE, MSemaphore * outSem = NULL);
+		JPThreadPool( Logger * log, int poolSize = MAX_POOL_SIZE, JPSemaphore * outSem = NULL);
+		/**
+		 * Class destructor
+		 */
+		~JPThreadPool();
 
 		/**
 		 * Function to set the routine to be called and the parameters
@@ -145,8 +243,8 @@ class JPThreadPool{
 		 * @return 0 In case of success
 		 *         1 In case of error
 		 */
-		int setRoutine( void *(*start_routine) (void*),
-		void *arg);
+		int setRoutine( thread_start_t start_routine,
+				        thr_var_t arg);
 		/**
 		 * Function used to create the pool
 		 * @return 0 In case of success
