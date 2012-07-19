@@ -77,8 +77,10 @@ JPPoolSharedMem::setToMemory( std::string valName , std::string value ){
  * Class constructor that initialize the semaphore
  * and the memory
  */
-JPPoolSharedMem::JPPoolSharedMem(){
+JPPoolSharedMem::JPPoolSharedMem(Logger * log){
 
+	this->log = log;
+	log->log( "SHRM" ,M_LOG_MIN,M_LOG_TRC, "JPPoolSharedMem::JPPoolSharedMem(%p)",log);
 }
 static std::string dieKey("thr_kill");
 /**
@@ -87,6 +89,7 @@ static std::string dieKey("thr_kill");
  */
 bool
 JPPoolSharedMem::die(){
+	log->log("SHRM",M_LOG_MIN,M_LOG_TRC,"JPPoolSharedMem::die()");
 	bool result;
 	sem.down();
 	std::string val = getFromMemory( dieKey );
@@ -104,6 +107,7 @@ JPPoolSharedMem::die(){
 		}
 	}
 	sem.up();
+	log->log("SHRM",M_LOG_MIN,M_LOG_TRC,"JPPoolSharedMem::%s need to die",(result?"":"NO"));
 	return result;
 }
 /**
@@ -114,6 +118,7 @@ JPPoolSharedMem::die(){
  */
 int
 JPPoolSharedMem::kill( int num ){
+	log->log("SHRM",M_LOG_MIN,M_LOG_TRC,"JPPoolSharedMem::kill(%d)",num);
 	int result;
 	sem.down();
 	std::string val = getFromMemory( dieKey );
@@ -140,12 +145,6 @@ JPPoolSharedMem::kill( int num ){
  * CLASS: JPThrWorker
  * BEGIN {
  */
-typedef struct{
-	thr_var_t arg;
-	thread_start_t funct;
-} __worker_t;
-JPSemaphore     * JPThrWorker::poolSem = NULL;
-JPPoolSharedMem * JPThrWorker::shrMem = NULL;
 /**
  * Private methods
  */
@@ -166,9 +165,18 @@ JPThrWorker::JPThrWorker( Logger * log, JPPoolSharedMem * shrMem, JPSemaphore * 
 	waitOnFunction = true;
 	waitOnArguments = true;
 	somethingChanged = false;
-	thread_args = NULL;
+	thread_args = new __thr_var_t;
 	funct = NULL;
 	logger = log;
+	caller_args = new __worker_t;
+	aux_args = new __thr_var_t;
+}
+/**
+ * Class destructor
+ */
+JPThrWorker::~JPThrWorker(){
+	delete aux_args;
+	delete caller_args;
 }
 
 /**
@@ -199,11 +207,19 @@ int
 JPThrWorker::setArguments(thr_var_t thread_args, bool waitOnFunction){
 	logger->log("THRP",M_LOG_MIN,M_LOG_TRC,"JPThrWorker::setArguments(%p,%d)",thread_args,(waitOnFunction?1:0));
 	this->waitOnFunction = waitOnFunction;
-	this->thread_args = thread_args;
+	//this->thread_args = thread_args;
+	this->thread_args->funVariables = thread_args->funVariables;
+	this->thread_args->logger = thread_args->logger;
+	this->thread_args->thrName.assign(thread_args->thrName);
 	waitOnArguments = false;
 	somethingChanged = true;
 	return 0;
 }
+
+/**
+ * Forward declaration of function
+ */
+var_t doWork( var_t args );
 /**
  * This will launch the runner function
  * on the thread that will execute
@@ -211,26 +227,51 @@ JPThrWorker::setArguments(thr_var_t thread_args, bool waitOnFunction){
 int
 JPThrWorker::start(){
 	logger->log("THRP",M_LOG_MIN,M_LOG_TRC,"JPThrWorker::start()");
-	__worker_t * funs = new __worker_t;
-	funs->arg = (thr_var_t)thread_args;
-	funs->funct = funct;
-	run( JPThrWorker::doWork, (thr_var_t)funs );
+	caller_args->arg = (thr_var_t)thread_args;
+	caller_args->funct = funct;
+	caller_args->me = this;
+	aux_args->logger = logger;
+	aux_args->funVariables = (var_t*) caller_args;
+
+	run( doWork, aux_args );
 	return 0;
 }
+/**
+ * Function called to check if
+ * the current thread needs to die
+ */
+bool
+JPThrWorker::needToDie(){
+	return shrMem->die();
+}
+/**
+ * Function called on the actual thread to wait for
+ * something in pool semaphore
+ */
+void
+JPThrWorker::waitForWork(){
+	poolSem->down();
+}
+
 var_t
-JPThrWorker::doWork( var_t args ){
+doWork( var_t args ){
 	var_t lastResult;
 
-	__worker_t * funs = (__worker_t * )args;
+	thr_var_t v = (thr_var_t)args;
+	__worker_t * funs = (__worker_t * )v->funVariables;
 	thr_var_t arg = (thr_var_t)funs->arg;
-	Logger logger(arg->logger);
-    logger.log("THRP",M_LOG_MIN,M_LOG_TRC,"JPThrWorker::doWork(%s)",args);
-	while(!shrMem->die()){
-		logger.log("THRP",M_LOG_MIN,M_LOG_TRC,"JPThrWorker::doWork cycle");
-		poolSem->down();
-		lastResult = funs->funct(funs->arg);
-		logger.log("THRP",M_LOG_MIN,M_LOG_TRC,"JPThrWorker::doWork Function ended");
+	Logger logger(v->logger);
+    logger.log("THRP",M_LOG_MIN,M_LOG_TRC,"[%s]JPThrWorker::doWork(%p)",v->thrName.c_str(),v);
+    funs->arg->logger = v->logger;
+    funs->arg->thrName.assign(v->thrName);
+	while(!funs->me->needToDie() ){
+		logger.log("THRP",M_LOG_MIN,M_LOG_TRC,"[%s]JPThrWorker::doWork cycle using[%s]",v->thrName.c_str(),funs->arg->thrName.c_str());
+		funs->me->waitForWork();
+	    lastResult = funs->funct(funs->arg);
+		logger.log("THRP",M_LOG_MIN,M_LOG_TRC,"[%s]JPThrWorker::doWork Function ended[%s]",v->thrName.c_str(),funs->arg->thrName.c_str());
 	}
+	logger.log("THRP",M_LOG_MIN,M_LOG_TRC,"[%s]JPThrWorker::doWork Ended...",v->thrName.c_str());
+
 	delete funs;
 }
 /**
@@ -258,13 +299,13 @@ JPThrWorker::doWork( var_t args ){
  */
 JPThreadPool::JPThreadPool( Logger * log, int poolSize , JPSemaphore * outSem ){
 	logger = log;
-	logger->log( moduleName ,M_LOG_MIN,M_LOG_TRC, "JPThreadPool(%d,%p)",poolSize,outSem );
+	logger->log( moduleName ,M_LOG_MIN,M_LOG_TRC, "JPThreadPool(%p,%d,%p)",log,poolSize,outSem );
 	hasRoutine = 0;
 	routine = NULL;
 	maxPoolSize = poolSize;
 	routineArgs = NULL;
 	sem = outSem;
-	shMem = new JPPoolSharedMem();
+	shrMem = new JPPoolSharedMem( log );
 	isPoolStarted = false;
 }
 /**
@@ -272,7 +313,10 @@ JPThreadPool::JPThreadPool( Logger * log, int poolSize , JPSemaphore * outSem ){
  */
 JPThreadPool::~JPThreadPool(){
 	logger->log( moduleName ,M_LOG_MIN,M_LOG_TRC, "~JPThreadPool()" );
-	delete shMem;
+	delete shrMem;
+	thrpool_thr_t::iterator it;
+	for(it = pool.begin(); it != pool.end(); it++)
+		delete it->second;
 }
 
 int

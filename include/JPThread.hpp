@@ -29,7 +29,7 @@ typedef void* var_t;
 typedef struct{
 	var_t funVariables;
 	Logger * logger;
-	std::string * thrName;
+	std::string thrName;
 }__thr_var_t;
 
 typedef __thr_var_t * thr_var_t;
@@ -48,6 +48,11 @@ class JPThread
          * @param thread_start The function to be called
          */
         JPThread(thread_start_t thread_start);
+        /**
+		 * Function implements the destructor of the
+		 * class
+		 */
+		virtual ~JPThread();
         /**
          * Function that starts the thread
          * @param thread_args Arguments to send to function
@@ -87,6 +92,10 @@ class JPThread
          * arguments to be passed to the thread
          */
         thr_var_t _thread_args;
+        /**
+         * Logger created
+         */
+        bool createdLogger;
 
 };
 

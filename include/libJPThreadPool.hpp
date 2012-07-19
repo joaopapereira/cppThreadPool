@@ -37,7 +37,10 @@ private:
 	 * Semaphore to access the memory
 	 */
     JPBinSemaphore sem;
-    
+    /**
+     * Logger
+     */
+    Logger * log;
     /**
      * SharedMemory Part
      * Begin{
@@ -67,7 +70,7 @@ public:
      * Class constructor that initialize the semaphore
      * and the memory
      */
-    JPPoolSharedMem();
+    JPPoolSharedMem( Logger * log );
     /**
      * Function check if the thread need to die
      * @return True if thread need to die
@@ -82,6 +85,15 @@ public:
     int kill( int num );
 };
 
+class JPThrWorker;
+/**
+ * worker structure
+ */
+typedef struct{
+	thr_var_t arg;
+	thread_start_t funct;
+	JPThrWorker * me;
+} __worker_t;
 /**
  * This class will implement a worker
  * instead of the control over the thread rely on the
@@ -96,11 +108,11 @@ class JPThrWorker: public JPThread{
 		/**
 		 * Semaphore from the pool
 		 */
-		static JPSemaphore * poolSem;
+		JPSemaphore * poolSem;
 		/**
 		 * Shared memory
 		 */
-		static JPPoolSharedMem * shrMem;
+		JPPoolSharedMem * shrMem;
 		/**
 		 * Function to call
 		 */
@@ -109,6 +121,15 @@ class JPThrWorker: public JPThread{
 		 * Arguments to the function
 		 */
 		thr_var_t thread_args;
+		/**
+		 * Arguments to the function
+		 */
+		thr_var_t aux_args;
+
+		/**
+		 * Arguments of the caller function
+		 */
+		__worker_t * caller_args;
 		/**
 		 * Should wait for the function
 		 */
@@ -131,6 +152,10 @@ class JPThrWorker: public JPThread{
 		 * Class constructor
 		 */
 		JPThrWorker( Logger * log, JPPoolSharedMem * shrMem, JPSemaphore * poolSem );
+		/**
+		 * Class destructor
+		 */
+		~JPThrWorker( );
 
 		/**
 		 * Function used to change the function
@@ -155,9 +180,15 @@ class JPThrWorker: public JPThread{
 		 */
 		int start();
 		/**
-		 * Function called by the thread
+		 * Function called to check if
+		 * the current thread needs to die
 		 */
-		static var_t doWork( var_t args );
+		bool needToDie();
+		/**
+		 * Function called on the actual thread to wait for
+		 * something in pool semaphore
+		 */
+		void waitForWork();
 };
 
 
@@ -193,10 +224,6 @@ class JPThreadPool{
 		 * Semaphore used to syncronize the threads
 		 */
 		JPSemaphore *sem;
-		/**
-		 * Shared memory
-		 */
-		JPPoolSharedMem *shMem;
 		/**
 		 * Variable to be used on the logger
 		 */

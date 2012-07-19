@@ -28,6 +28,17 @@
 JPThread::JPThread(thread_start_t thread_start)
 		 :_thread_name("Thread"){
     _thread_start = thread_start;
+    _thread_args = new __thr_var_t;
+    createdLogger = false;
+}
+/**
+ * Function implements the destructor of the
+ * class
+ */
+JPThread::~JPThread(){
+    if(createdLogger)
+    	delete _thread_args->logger;
+    delete _thread_args;
 }
 
 /**
@@ -38,14 +49,18 @@ void
 JPThread::run(thr_var_t thread_args) {
 	if( NULL == _thread_start )
 		return;
-	if( NULL == thread_args->logger)
-		thread_args->logger = new Logger();
+	_thread_args->funVariables = thread_args->funVariables;
+	_thread_args->logger = thread_args->logger;
+	if( NULL == _thread_args->logger){
+		_thread_args->logger = new Logger();
+		createdLogger = true;
+	}
 	//if( NULL == thread_args->thrName )
-	thread_args->thrName = new std::string(_thread_name);
+	_thread_args->thrName.assign(_thread_name);
 	//else if( 0 == thread_args->thrName->size() )
 	//	thread_args->thrName->assign( _thread_name );
-	thread_args->logger->log("THRP",M_LOG_MIN,M_LOG_TRC,"JPThread::run(%p) calling pthread_create",thread_args);
-    pthread_create(&_thread, NULL, _thread_start, (void*)thread_args);
+	_thread_args->logger->log("THRP",M_LOG_MIN,M_LOG_TRC,"JPThread::run(%p) calling pthread_create",thread_args);
+    pthread_create(&_thread, NULL, _thread_start, (void*)_thread_args);
 }
 void
 JPThread::run(thread_start_t thread_start, thr_var_t thread_args) {
