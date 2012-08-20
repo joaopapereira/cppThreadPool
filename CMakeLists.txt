@@ -75,7 +75,7 @@ message(${INSTALL_LIBS})
 INSTALL( FILES include/libJPThreadPool.hpp
          DESTINATION ${INSTALL_INCS} )
 
-INSTALL( FILES lib/libJPThreadPool.a
+INSTALL( FILES lib/libJPThreadPoolStatic.a
          DESTINATION ${INSTALL_LIBS} )
 INSTALL( FILES lib/libJPThreadPool.so
          DESTINATION ${INSTALL_LIBS} )
