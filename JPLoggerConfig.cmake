@@ -2,7 +2,7 @@
 message("STUFF")
 IF(NOT(JPLogger_LIBRARY AND JPLogger_INCLUDE_DIR))
 	# search for include and library path
-	FIND_PATH(JPLogger_INCLUDE_DIR  libJPLogger.h PATHS ${LOCAL_INC} )
+	FIND_PATH(JPLogger_INCLUDE_DIR  libJPLogger.hpp PATHS ${LOCAL_INC} )
 	FIND_LIBRARY(JPLogger_LIBRARY JPLogger PATHS ${LOCAL_LIBS} )
 
 	IF(JPLogger_INCLUDE_DIR AND JPLogger_LIBRARY)

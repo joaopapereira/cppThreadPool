@@ -12,8 +12,8 @@
                Here the script will be called exampleProgram.
  ============================================================================
  */
-#include <extlibs/libJPLogger.hpp>
-#include <extlibs/libJPSemaphores.hpp>
+#include <libJPLogger.hpp>
+#include <libJPSemaphores.hpp>
 #include "libJPThreadPool.hpp"
 
 #include <unistd.h>

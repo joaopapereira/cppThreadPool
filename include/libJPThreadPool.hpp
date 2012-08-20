@@ -20,8 +20,8 @@
 #ifndef libJPThreadPool_H
 #define libJPThreadPool_H
 #include "JPThread.hpp"
-#include <extlibs/libJPSemaphores.hpp>
-#include <extlibs/libJPLogger.hpp>
+#include <libJPSemaphores.hpp>
+#include <libJPLogger.hpp>
 #include <string>
 
 namespace jpCppLibs{

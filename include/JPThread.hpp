@@ -22,7 +22,7 @@
 #define	JPTHREAD_HPP
 #include <pthread.h>
 #include <string>
-#include <extlibs/libJPLogger.hpp>
+#include <libJPLogger.hpp>
 
 namespace jpCppLibs{
 	
