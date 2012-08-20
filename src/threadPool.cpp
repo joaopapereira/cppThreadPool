@@ -22,6 +22,8 @@
 #include <stdio.h>
 #include <sstream>
 #include <stdlib.h>
+
+using namespace jpCppLibs;
 #define MAXPOOL 50
 const std::string JPThreadPool::moduleName = "THRP";
 

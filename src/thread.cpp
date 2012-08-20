@@ -19,6 +19,7 @@
  */
 #include "JPThread.hpp"
 
+using namespace jpCppLibs;
 
 /**
  * Function implements the constructor of the

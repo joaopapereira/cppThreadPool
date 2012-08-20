@@ -12,13 +12,14 @@
                Here the script will be called exampleProgram.
  ============================================================================
  */
-#include <extlibs/libJPLogger.h>
+#include <extlibs/libJPLogger.hpp>
 #include <extlibs/libJPSemaphores.hpp>
 #include "libJPThreadPool.hpp"
 
 #include <unistd.h>
 #include <stdlib.h>
 #include <iostream>
+using namespace jpCppLibs;
 
 bool threadsDie = false;
 #define MAX_NUMBER_OF_THREADS 5

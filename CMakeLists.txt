@@ -3,7 +3,15 @@
 #
 #
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
-SET(CMAKE_BUILD_TYPE Debug)
+#####################################
+## Option part
+#####################################
+option(thrpool_build_samples "Build thread pool sample programs." OFF)
+option(compile_with_debug "Build library with debug." OFF)
+
+#####################################
+## Definition of environment
+#####################################
 IF( DEFINED ENV{INSTALL_LIB_DIR} )
    SET(INSTALL_LIBS $ENV{INSTALL_LIB_DIR}/ )
 ELSE()
@@ -15,26 +23,44 @@ ELSE()
    SET(INSTALL_INCS ${CMAKE_HOME_DIRECTORY}/include )
 ENDIF()
 
-set(CMAKE_CXX_FLAGS "-g")
+IF( EXISTS ${INSTALL_LIBS}/libJPThreadPool.a )
+	return()
+ENDIF()
 
 
 SET(LIBRARY_OUTPUT_PATH .)
 SET(EXECUTABLE_OUTPUT_PATH .)
 
+#####################################
+## Project name
+#####################################
 PROJECT ( thrpool CXX )
+
+#####################################
+## Include directories 
 INCLUDE_DIRECTORIES( include lib ${INSTALL_LIBS} ${INSTALL_INCS})
 
+#####################################
+## Folders to be build
+#####################################
 ADD_SUBDIRECTORY( src lib )
-ADD_SUBDIRECTORY( exampleProgram bin )
+#ADD_SUBDIRECTORY( exampleProgram bin )
+#####################################
+## Samples to be build
+#####################################
+if( thrpool_build_samples)
+	ADD_SUBDIRECTORY( exampleProgram bin )
+endif()
+
 #####################################
 # Search for needed lib
 #####################################
-FIND_LIBRARY(logger REQUIRED)
-FIND_LIBRARY(JPSemaphores REQUIRED)
-FIND_LIBRARY( LOGGER_LIBRARY NAMES logger
+FIND_LIBRARY(JPLoggerStatic REQUIRED)
+FIND_LIBRARY(JPSemaphoresStatic REQUIRED)
+FIND_LIBRARY( LOGGER_LIBRARY NAMES JPLoggerStatic
                 PATHS ${LOCAL_LIBS} ${INSTALL_LIBS} )
 SET( LIBS ${LIBS} ${LOGGER_LIBRARY})
-FIND_LIBRARY( JPSEMAPHORES_LIBRARY NAMES JPSemaphores
+FIND_LIBRARY( JPSEMAPHORES_LIBRARY NAMES JPSemaphoresStatic
                 PATHS ${LOCAL_LIBS} ${INSTALL_LIBS} )
 SET( LIBS ${LIBS} ${JPSEMAPHORES_LIBRARY})
 message(${LIBS})
@@ -42,19 +68,21 @@ message(${INSTALL_LIBS})
 
 #include_directories(${logger_INCLUDE_DIRS} ${JPSemaphore_INCLUDE_DIRS})
 
+
 #####################################
 # Instalation section
 #####################################
 INSTALL( FILES include/libJPThreadPool.hpp
          DESTINATION ${INSTALL_INCS} )
 
-INSTALL( FILES include/JPThread.hpp
-         DESTINATION ${INSTALL_INCS} )
+INSTALL( FILES lib/libJPThreadPool.a
+         DESTINATION ${INSTALL_LIBS} )
 INSTALL( FILES lib/libJPThreadPool.so
          DESTINATION ${INSTALL_LIBS} )
 
-
-
+#####################################
+# Others
+#####################################
 IF( UNIX )
    ADD_CUSTOM_TARGET( distclean @@echo cleaning for source distribution)
   SET(DISTCLEANED
@@ -67,9 +95,14 @@ IF( UNIX )
    core core.*
    gmon.out
    *~
-   CMakeFiles 
-   bin
    lib
+   CMakeFiles
+   bin
+   install_*
+   cmake_install.cmake 
+   doc/docs/
+   doc/semaphore.dox
+
   )
 
   ADD_CUSTOM_COMMAND(
@@ -79,11 +112,23 @@ IF( UNIX )
     ARGS    -Rf CMakeTmp ${DISTCLEANED}
     TARGET  distclean
   )
-  ADD_CUSTOM_COMMAND(
-    COMMENT "Generate Examples"
-    COMMAND make -C examples
-    TARGET  examples
-  )
-ENDIF( UNIX )
 
+ENDIF( UNIX )
+if( compile_with_debug )
+	set(CMAKE_CXX_FLAGS "-DDEBUG=1")
+	set(CMAKE_BUILD_TYPE Debug)
+endif()
+
+#####################################
+# add a target to generate API documentation with Doxygen
+#####################################
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+	configure_file(${CMAKE_CURRENT_SOURCE_DIR}/doc/thrpool.dox.in ${CMAKE_CURRENT_BINARY_DIR}/doc/thrpool.dox @ONLY)
+	add_custom_target(docs
+			${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/doc/thrpool.dox
+			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+			COMMENT "Generating Semaphore documentation with Doxygen" VERBATIM
+)
+endif(DOXYGEN_FOUND)
 
