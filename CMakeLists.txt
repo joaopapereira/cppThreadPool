@@ -74,6 +74,8 @@ message(${INSTALL_LIBS})
 #####################################
 INSTALL( FILES include/libJPThreadPool.hpp
          DESTINATION ${INSTALL_INCS} )
+INSTALL( FILES include/JPThread.hpp
+         DESTINATION ${INSTALL_INCS} )
 
 INSTALL( FILES lib/libJPThreadPoolStatic.a
          DESTINATION ${INSTALL_LIBS} )
